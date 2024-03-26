@@ -7,6 +7,8 @@ from datetime import datetime
 from pathlib import Path
 from shutil import move
 import logging
+import traceback
+from hashlib import md5
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +46,14 @@ def sort_file(file, exif, output_dir):
     logger.info('Moving \'%s\' -> \'%s\'', file, path.join(dest_dir, path.basename(file)))
     if path.exists(path.join(dest_dir, path.basename(file))):
         logger.error('\'%s\' already exists, will not move', path.join(dest_dir, path.basename(file)))
+        if args.md5:
+            logger.debug('Calculating MD5 of \'%s\' as requested', file)
+            with open(file, 'rb') as source_file:
+                source_md5 = md5(source_file.read()).hexdigest()
+            logger.debug('Calculating MD5 of \'%s\' as requested', path.join(dest_dir, path.basename(file)))
+            with open(path.join(dest_dir, path.basename(file)), 'rb') as target_file:
+                target_md5 = md5(target_file.read()).hexdigest()
+            logger.info('Source: %s, Destination: %s', source_md5, target_md5)
         return
     move(file, path.join(dest_dir, path.basename(file)))
     update_file(path.join(dest_dir, path.basename(file)), exif_date)
@@ -58,6 +68,7 @@ if __name__ == '__main__':
     parser.add_argument('directory', type=str, nargs='+', help='Directory containing source images.')
     parser.add_argument('-s', '--sort', action='store_true', help='Sort images into year/month subdirectories.')
     parser.add_argument('-o', '--output', type=str, help='Output directory (for use with --sort)')
+    parser.add_argument('-m', '--md5', action='store_true', help='Calculate MD5s of matching filenames.')
     args = parser.parse_args()
     if args.sort:
         if args.output is None:
@@ -84,12 +95,10 @@ if __name__ == '__main__':
             if args.sort:
                 try:
                     sort_file(file, get_exif(exiftool, file), args.output)
-                except Exception as e:
-                    logger.error(e)
+                except Exception:
+                    logger.error(traceback.format_exc())
             else:
                 try:
                     update_file(file, exif_to_date(get_exif(exiftool, file)))
-                except Exception as e:
-                    logger.error(e)
-
-
+                except Exception:
+                    logger.error(traceback.format_exc())
