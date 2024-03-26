@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import argparse
-from os import listdir, path, utime
+from os import listdir, path, utime, remove
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -35,10 +35,17 @@ def get_exif(exiftool, file) -> dict:
         return None
     
 def exif_to_date(exif):
-    return datetime.strptime(exif['Create Date'], '%Y:%m:%d %H:%M:%S')
+    known_keys = ['Create Date', 'Date Created']
+    for key in known_keys:
+        if key in exif.keys():
+            logger.debug('Found \'%s\' in EXIF, using it')
+            return datetime.strptime(exif['Create Date'], '%Y:%m:%d %H:%M:%S')
+    logger.error('No known creation dates in EXIF, giving up')
 
 def sort_file(file, exif, output_dir):
     exif_date = exif_to_date(exif)
+    if exif_date is None:
+        return
     logger.debug('EXIF has date %s', exif_date)
     dest_dir = path.join(output_dir, str(exif_date.year), str(exif_date.month).rjust(2, '0'))
     logger.debug('Creating \'%s\'', dest_dir)
@@ -54,6 +61,13 @@ def sort_file(file, exif, output_dir):
             with open(path.join(dest_dir, path.basename(file)), 'rb') as target_file:
                 target_md5 = md5(target_file.read()).hexdigest()
             logger.info('Source: %s, Destination: %s', source_md5, target_md5)
+            if args.delete_matching:
+                if source_md5 == target_md5:
+                    logger.warning('Source and target MD5s match, deleting \'%s\'', file)
+                    remove(file)
+                else:
+                    logger.info('MD5s do not match, leaving source file alone')
+ 
         return
     move(file, path.join(dest_dir, path.basename(file)))
     update_file(path.join(dest_dir, path.basename(file)), exif_date)
@@ -69,7 +83,11 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--sort', action='store_true', help='Sort images into year/month subdirectories.')
     parser.add_argument('-o', '--output', type=str, help='Output directory (for use with --sort)')
     parser.add_argument('-m', '--md5', action='store_true', help='Calculate MD5s of matching filenames.')
+    parser.add_argument('--delete-matching', action='store_true', help='Delete file if a matching (by name & MD5) file is found in the destination')
     args = parser.parse_args()
+
+    if args.delete_matching and not args.md5:
+        parser.error('--md5 is required for --delete-matching')
     if args.sort:
         if args.output is None:
             parser.error('--sort requires --output directory to be set')
