@@ -42,6 +42,9 @@ def sort_file(file, exif, output_dir):
     logger.debug('Creating \'%s\'', dest_dir)
     Path(dest_dir).mkdir(exist_ok=True, parents=True)
     logger.info('Moving \'%s\' -> \'%s\'', file, path.join(dest_dir, path.basename(file)))
+    if path.exists(path.join(dest_dir, path.basename(file))):
+        logger.error('\'%s\' already exists, will not move', path.join(dest_dir, path.basename(file)))
+        return
     move(file, path.join(dest_dir, path.basename(file)))
     update_file(path.join(dest_dir, path.basename(file)), exif_date)
     
