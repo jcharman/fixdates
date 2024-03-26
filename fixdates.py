@@ -82,11 +82,11 @@ if __name__ == '__main__':
                 try:
                     sort_file(file, get_exif(exiftool, file), args.output)
                 except Exception as e:
-                    logger.error(e.with_traceback())
+                    logger.error(e)
             else:
                 try:
                     update_file(file, exif_to_date(get_exif(exiftool, file)))
                 except Exception as e:
-                    logger.error(e.with_traceback())
+                    logger.error(e)
 
 
