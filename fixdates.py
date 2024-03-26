@@ -79,8 +79,14 @@ if __name__ == '__main__':
                 logger.warning('\'%s\' has no EXIF data. Will not process further', file)
                 continue
             if args.sort:
-                sort_file(file, get_exif(exiftool, file), args.output)
+                try:
+                    sort_file(file, get_exif(exiftool, file), args.output)
+                except Exception as e:
+                    logger.error(e.with_traceback())
             else:
-                update_file(file, exif_to_date(get_exif(exiftool, file)))
+                try:
+                    update_file(file, exif_to_date(get_exif(exiftool, file)))
+                except Exception as e:
+                    logger.error(e.with_traceback())
 
 
